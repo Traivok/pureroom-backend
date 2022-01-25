@@ -18,18 +18,28 @@ const fluxQuery = `from(bucket: "ubiquarium")
 
 
 function makeHan () {
-        let arr   = [];
+        let arrCo2 = [];
+        let arrHum = [];
+        let arrTemp = [];
+        let arr = [];
         return new Promise((resolve, reject) => {
             const sub = from(queryApi.rows(fluxQuery))
                 .pipe(map(({ values, tableMeta }) => tableMeta.toObject(values)))
                 .subscribe({
                     next(o) {
-                        console.log(o);
-                        console.log ("GOOOOO")
+                        if (o.category === 'humidity')
+                        arrHum = [ ...arrHum, { value: o._value, time: new Date(o._time).getTime() } ];
+                        if (o.category === 'temperature')
+                            arrTemp = [ ...arrTemp, { value: o._value, time: new Date(o._time).getTime() } ];
+                        if (o.category === 'carbondioxide')
+                            arrCo2 = [ ...arrCo2, { value: o._value, time: new Date(o._time).getTime() } ];
                     }, error(e) {
                         console.error(e);
                         reject(e)
                     }, complete() {
+                        arr.push(arrTemp);
+                        arr.push(arrHum);
+                        arr.push(arrCo2);
                         resolve(arr);
                         // console.log('\nFinished SUCCESS');
                     },
@@ -43,24 +53,20 @@ function formula(temp, hum, co2) {
 }
 
 
-var myLogger = async function (req, res) {
-    const arrTemp = await makeHan();
-    /*let arr = [];
-    console.log(arrTemp[23].time);
-    console.log(arrHum[23].time);
-    console.log(arrCo2[23].time);
-    for(let i = 0; i < arrTemp.length; i++) {
-        arr = [ ...arr, { value: formula(arrTemp[i].value,arrHum[i].value,arrCo2[i].value), time: arrTemp[i].time} ];
+var myLogger = async function () {
+    let arr = await makeHan();
+    let tab = [];
+    for (let i = 0; i < arr[0].length; i++) {
+        tab = [...tab, {value: formula(arr[0][i].value, arr[1][i].value, arr[2][i].value), time: arr[0][i].time}];
     }
-    return arr;*/
+    return tab;
 };
 
 
 
 // GET /scoring
 router.get('/scores', (req, res) => {
-    myLogger().then(data => res.send(data))
-    res.send([ { value: 0, time: Date.now() }]);
+    myLogger().then(data => res.send(data));
 });
 
 module.exports = router;
