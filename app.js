@@ -17,6 +17,7 @@ app.use('/', require('./api/influxdb'));
 app.use('/', require('./api/scores'));
 
 app.listen(8080);
+console.log('APP LISTENING ON 8080');
 
 
 module.exports = app;
