@@ -143,6 +143,7 @@ const getIndoorCo2Level = async () => {
             indoor_co2.push({ value: arr[i].value, time: arr[i].time, status: indoor_co2_status(arr[i].value) });
         }
     });
+    console.log(indoor_co2)
     return indoor_co2;
 };
 
@@ -157,7 +158,7 @@ const getScores = async () => {
         dewPnt:  1.,
         humIdx:  1.,
         heatIdx: 1.,
-        inCo2:   10.,
+        inCo2:   5.,
     };
     const totalWeight = sum(values(weights));
     return zip(dew_point, humidex, heat_index, indoor_co2)
@@ -218,13 +219,17 @@ const heat_index_status = (heat_index_value) => {
 };
 
 const indoor_co2_status = (indoor_co2_value) => {
-    if (indoor_co2_value < 600) return {
-        code: 0, value: 'excellent', score: 100,
-    }; else if (indoor_co2_value >= 600 && indoor_co2_value < 1000) return {
-        code: 1, value: 'confortable', score: 90,
-    }; else if (indoor_co2_value >= 1000 && indoor_co2_value < 1500) return {
-        code: 2, value: 'unconfortable', score: 10,
-    }; else return { code: 3, value: 'danger', score: 0 };
+    const f = value => Math.min(100, Math.max(0, (-value + 1500) / 10))
+    if (indoor_co2_value < 600)
+        return { code: 0, value: 'excellent', score: f(indoor_co2_value) };
+    else if (indoor_co2_value >= 600 && indoor_co2_value < 1000)
+        return { code: 1, value: 'confortable', score: f(indoor_co2_value) };
+    else if (indoor_co2_value >= 800 && indoor_co2_value < 100)
+        return { code: 1, value: 'little unconfortable', score: f(indoor_co2_value) };
+    else if (indoor_co2_value >= 1000 && indoor_co2_value < 1500)
+        return { code: 2, value: 'unconfortable', score: f(indoor_co2_value) };
+    else
+        return { code: 3, value: 'danger', score: f(indoor_co2_value) };
 };
 
 
