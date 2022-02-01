@@ -14,12 +14,10 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cors({ origin: '*' }));
 
-app.use('/', require('./api/influxdb'));
-app.use('/', require('./api/scores'));
+app.use('/weather', require('./api/influxdb'));
+app.use('/scores', require('./api/scores'));
 
 app.listen(8080);
 console.log('APP LISTENING ON 8080');
-
-
 
 module.exports = app;

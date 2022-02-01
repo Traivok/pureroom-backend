@@ -69,7 +69,7 @@ const myLogger = async function () {
 
 
 // GET /scoring
-router.get('/scores', (req, res) => {
+router.get('/', (req, res) => {
     myLogger().then(data => res.send(data));
 });
 
