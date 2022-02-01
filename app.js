@@ -3,6 +3,7 @@ const path         = require('path');
 const cookieParser = require('cookie-parser');
 const logger       = require('morgan');
 const cors         = require('cors');
+require('dotenv').config()
 
 const app = express();
 
@@ -16,7 +17,7 @@ app.use(cors({ origin: '*' }));
 app.use('/', require('./api/influxdb'));
 app.use('/', require('./api/scores'));
 
-app.listen(8080);
+app.listen(3000);
 
 
 module.exports = app;
