@@ -74,33 +74,33 @@ const makeHandker = (measurement) => (req, res) => {
         })
 };
 
-const getDewPoint = () => (req, res) => {
+const getDewPoint = async() => {
     let dew_point = []
-    getHumidityAndTemperature.then(obj=>{
+    await getHumidityAndTemperature.then(obj=>{
         for(let i=0; i<obj.humidity.length; i++){
             let dew_point_value = obj.temperature[i].value - (100 - obj.humidity[i].value)/5
             dew_point.push({ value: dew_point_value, time: obj.humidity[i].time, status: dew_point_status_celsius(dew_point_value)})
         }
-        res.send(dew_point);
     })
-};
+    return dew_point
+}
 
-const getHumidex = () => (req, res) => {
+const getHumidex = async () => {
     let humidex = []
-    getHumidityAndTemperature.then(obj=>{
+    await getHumidityAndTemperature.then(obj=>{
         for(let i=0; i<obj.humidity.length; i++){
             let dew_point_value = obj.temperature[i].value - (100 - obj.humidity[i].value)/5
             let humidex_value = obj.temperature[i].value + 5/9*(6.11 * Math.pow(2.71828, (5417.7530*(1/273.16 - 1/(273.15+dew_point_value)))))
             humidex.push({ value: humidex_value, time: obj.humidity[i].time, status: humidex_status(humidex_value)})
         }
-        res.send(humidex);
     })
+    return humidex
 };
 
-const getHeatIndex = () => (req, res) => {
+const getHeatIndex = async () => {
     let heat_index = []
 
-    getHumidityAndTemperature.then(obj=>{
+    await getHumidityAndTemperature.then(obj=>{
         let T = obj.temperature
         let R = obj.humidity
         for(let i=0; i<obj.humidity.length; i++){
@@ -129,40 +129,27 @@ const getHeatIndex = () => (req, res) => {
 
             heat_index.push({ value: heat_index_value, time: obj.humidity[i].time, status: heat_index_status(heat_index_value)})
         }
-        res.send(heat_index);
     })
+    return heat_index
 };
 
-const getIndoorCo2Level = () => (req, res) => {
+const getIndoorCo2Level = async () => {
     let indoor_co2 = []
-    getMeasurement('co2').then(arr=>{
+    await getMeasurement('co2').then(arr=>{
         for(let i=0; i<arr.length; i++){
             indoor_co2.push({ value: arr[i].value, time: arr[i].time, status: indoor_co2_status(arr[i].value)})
         }
-        res.send(indoor_co2);
     })
-
+    return indoor_co2
 };
 
-const getFinalScore = () => (req, res) =>{
-    let dew_point = []
-    let humidex = []
-    let heat_index = []
-    let indoor_co2 = []
-    let final_score = []
-    getDewPoint.then(res=>{
-        dew_point=res
-    })
-    getHumidex().then(res=>{
-        humidex=res
-    })
-    getHeatIndex().then(res=>{
-        heat_index=res
-    })
-    getIndoorCo2Level().then(res=>{
-        indoor_co2=res
-    })
-
+const getFinalScore = async () =>{
+    let dew_point = await getDewPoint()
+    let humidex = await getHumidex()
+    let heat_index = await getHeatIndex()
+    let indoor_co2 = await getIndoorCo2Level()
+    let final_score = (dew_point[dew_point.length-1].status.score+ humidex[humidex.length-1].status.score + heat_index[heat_index.length-1].status.score + indoor_co2[indoor_co2.length-1].status.score)/4
+    return {value: final_score}
 };
 
 const dew_point_status_celsius = (dew_point_value) => {
@@ -197,10 +184,12 @@ const indoor_co2_status = (indoor_co2_value) => {
     else return {code: 3, value: "danger", score: 0}
 }
 
-router.get('/dewpoint', getDewPoint())
-router.get('/humidex', getHumidex())
-router.get('/heatindex', getHeatIndex())
-router.get('/indoorco2', getIndoorCo2Level())
+
+router.get('/dewpoint', async (req, res) => {res.send(await getDewPoint())})
+router.get('/humidex', async (req, res) => res.send(await getHumidex()))
+router.get('/heatindex', async (req, res) => res.send(await getHeatIndex()))
+router.get('/indoorco2', async (req, res) => res.send(await getIndoorCo2Level()))
+router.get('/finalscore', async (req, res) => res.send(await getFinalScore()))
 
 // GET /weather/humidity
 // GET /weather/co2
