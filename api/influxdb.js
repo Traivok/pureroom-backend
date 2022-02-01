@@ -31,10 +31,11 @@ const getMeasurement = (measurement) => new Promise((resolve, reject) => {
                 arr = [ ...arr, { value: o._value, time: new Date(o._time).getTime() } ];
             }, error(e) {
                 console.error(e)
+                sub.unsubscribe()
                 reject(e)
             }, complete() {
-                resolve(arr)
                 sub.unsubscribe();
+                resolve(arr)
             },
         });
 })
@@ -56,15 +57,16 @@ const getHumidityAndTemperature = new Promise((resolve, reject) => {
                 }
             }, error(e) {
                 console.error(e);
+                sub.unsubscribe();
                 reject(e)
             }, complete() {
-                resolve(result)
                 sub.unsubscribe();
+                resolve(result)
             },
         });
 });
 
-const makeHandker = (measurement) => (req, res) => {
+const makeHandler = (measurement) => (req, res) => {
     getMeasurement(measurement)
         .then(result=>{
             res.send(result)
@@ -195,7 +197,7 @@ router.get('/finalscore', async (req, res) => res.send(await getFinalScore()))
 // GET /weather/co2
 // GET /weather/temperature
 for (const measure of [ 'humidity', 'co2', 'temperature' ]) {
-    router.get('/weather/' + measure, makeHandker(measure));
+    router.get('/weather/' + measure, makeHandler(measure));
 }
 
 module.exports = router;
