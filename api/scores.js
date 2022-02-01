@@ -9,33 +9,64 @@ const { influx: { url, token, org } } = require('../env');
 const { from, map, take }             = require('rxjs');
 
 const queryApi  = new InfluxDB({ url, token }).getQueryApi(org);
-const fluxQuery = (measurement) => `from(bucket: "ubiquarium")
+const fluxQuery = `from(bucket: "ubiquarium")
   |> range(start: -1d)
-  |> filter(fn: (r) => r["measurement"] == "${ measurement }")
+  |> filter(fn: (r) => r["measurement"] == "temperature" or r["measurement"] == "co2" or r["measurement"] == "humidity")
   |> filter(fn: (r) => r["location"] == "t1_1_ubiquarium_stand1")
   |> filter(fn: (r) => r["protocol"] == "netatmo") 
   |> yield(name: "last")`;
 
-const makeHandker = (measurement) => (req, res) => {
-    let arr   = [];
-    const sub = from(queryApi.rows(fluxQuery(measurement)))
-        .pipe(map(({ values, tableMeta }) => tableMeta.toObject(values)))
-        .subscribe({
-            next(o) {
-                arr = [ ...arr, { value: o._value, time: new Date(o._time).getTime() } ];
-            }, error(e) {
-                console.error(e);
-            }, complete() {
-                res.send(arr);
-                sub.unsubscribe();
-                // console.log('\nFinished SUCCESS');
-            },
-        });
+
+function makeHan () {
+        let arrCo2 = [];
+        let arrHum = [];
+        let arrTemp = [];
+        let arr = [];
+        return new Promise((resolve, reject) => {
+            const sub = from(queryApi.rows(fluxQuery))
+                .pipe(map(({ values, tableMeta }) => tableMeta.toObject(values)))
+                .subscribe({
+                    next(o) {
+                        if (o.category === 'humidity')
+                        arrHum = [ ...arrHum, { value: o._value, time: new Date(o._time).getTime() } ];
+                        if (o.category === 'temperature')
+                            arrTemp = [ ...arrTemp, { value: o._value, time: new Date(o._time).getTime() } ];
+                        if (o.category === 'carbondioxide')
+                            arrCo2 = [ ...arrCo2, { value: o._value, time: new Date(o._time).getTime() } ];
+                    }, error(e) {
+                        console.error(e);
+                        reject(e)
+                    }, complete() {
+                        arr.push(arrTemp);
+                        arr.push(arrHum);
+                        arr.push(arrCo2);
+                        resolve(arr);
+                        // console.log('\nFinished SUCCESS');
+                    },
+                });
+        })
+
+    }
+
+function formula(temp, hum, co2) {
+    return Math.floor((temp+hum+co2)/3);
+}
+
+
+var myLogger = async function () {
+    let arr = await makeHan();
+    let tab = [];
+    for (let i = 0; i < arr[0].length; i++) {
+        tab = [...tab, {value: formula(arr[0][i].value, arr[1][i].value, arr[2][i].value), time: arr[0][i].time}];
+    }
+    return tab;
 };
+
+
 
 // GET /scoring
 router.get('/scores', (req, res) => {
-    res.send([ { value: 0, time: Date.now() }]);
+    myLogger().then(data => res.send(data));
 });
 
 module.exports = router;

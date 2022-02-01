@@ -17,7 +17,9 @@ app.use(cors({ origin: '*' }));
 app.use('/', require('./api/influxdb'));
 app.use('/', require('./api/scores'));
 
-app.listen(3000);
+app.listen(8080);
+console.log('APP LISTENING ON 8080');
+
 
 
 module.exports = app;
