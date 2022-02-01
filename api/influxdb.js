@@ -143,26 +143,29 @@ const getIndoorCo2Level = async () => {
             indoor_co2.push({ value: arr[i].value, time: arr[i].time, status: indoor_co2_status(arr[i].value) });
         }
     });
-    console.log(indoor_co2)
     return indoor_co2;
 };
 
 const getScores = async () => {
-    const dew_point  = await getDewPoint();
-    const humidex    = await getHumidex();
-    const heat_index = await getHeatIndex();
-    const indoor_co2 = await getIndoorCo2Level();
+    const dew_point   = await getDewPoint();
+    const humidex     = await getHumidex();
+    const heat_index  = await getHeatIndex();
+    const indoor_co2  = await getIndoorCo2Level();
+    const temperature = (await getMeasurement('temperature')).map(temperatureScore);
+    const humidity    = (await getMeasurement('humidity')).map(humidityScore);
 
     let time          = -Infinity;
     const weights     = {
         dewPnt:  1.,
-        humIdx:  1.,
-        heatIdx: 1.,
-        inCo2:   5.,
+        humIdx:  .25,
+        heatIdx: .25,
+        inCo2:   5.0,
+        hum:     1.,
+        temp:    2.,
     };
     const totalWeight = sum(values(weights));
-    return zip(dew_point, humidex, heat_index, indoor_co2)
-        .map(([ dewPnt, humIdx, heatIdx, inCo2 ]) => ({ dewPnt, humIdx, heatIdx, inCo2 }))
+    return zip(dew_point, humidex, heat_index, indoor_co2, humidity, temperature)
+        .map(([ dewPnt, humIdx, heatIdx, inCo2, hum, temp ]) => ({ dewPnt, humIdx, heatIdx, inCo2, hum, temp }))
         .map(obj => {
             let score = 0;
 
@@ -195,31 +198,54 @@ const dew_point_status_celsius = (dew_point_value) => {
 };
 
 const humidex_status = (humidex_value) => {
-    if (humidex_value < 15) return {
-        code: 0, value: 'fresh', score: 80,
-    }; else if (humidex_value >= 5 && humidex_value < 10) return {
-        code: 1, value: 'dry', score: 90,
-    }; else if (humidex_value >= 15 && humidex_value < 29) return {
-        code: 2, value: 'confortable', score: 100,
-    }; else if (humidex_value >= 30 && humidex_value < 39) return {
-        code: 3, value: 'uncomfortable', score: 20,
-    }; else if (humidex_value >= 40 && humidex_value < 53) return {
-        code: 4, value: 'danger', score: 10,
-    }; else return { code: 5, value: 'extreme', score: 0 };
+    if (humidex_value < 15)
+        return { code: 0, value: 'fresh', score: 80 };
+    else if (humidex_value >= 15 && humidex_value < 29)
+        return { code: 2, value: 'confortable', score: 100 };
+    else if (humidex_value >= 30 && humidex_value < 39)
+        return { code: 3, value: 'uncomfortable', score: 20 };
+    else if (humidex_value >= 40 && humidex_value < 53)
+        return { code: 4, value: 'danger', score: 10 };
+    else
+        return { code: 5, value: 'extreme', score: 0 };
+};
+
+
+const humidityScore = humidity => {
+    const clamp = x => Math.min(100, Math.max(x, 0));
+    const x     = humidity.value;
+
+    const a = -1;
+    const b = 90;
+    const c = -2015;  // y(20) = y(70) = 0 and y(45) = 100
+    return { ...humidity, status: { score: clamp((a * x * x) + (b * x) + c) } };
+};
+
+const temperatureScore = temperature => {
+    const clamp = x => Math.min(100, Math.max(x, 0));
+    const x     = temperature.value;
+
+    const a = -1;
+    const b = 90;
+    const c = -2015;  // y(20) = y(70) = 0 and y(45) = 100
+
+    return { ...temperature, status: { score: clamp((a * x * x) + (b * x) + c) } };
 };
 
 const heat_index_status = (heat_index_value) => {
-    if (heat_index_value < 26) return {
-        code: 0, value: 'confortable', score: 100,
-    }; else if (heat_index_value >= 26 && heat_index_value < 31) return {
-        code: 1, value: 'caution', score: 20,
-    }; else if (heat_index_value >= 31 && heat_index_value < 51) return {
-        code: 2, value: 'uncomfortable', score: 10,
-    }; else return { code: 3, value: 'danger', score: 0 };
+    const f = value => Math.min(100, Math.max(0, 100 * (value - 26) / 25));
+    if (heat_index_value < 26)
+        return { code: 0, value: 'confortable', score: f(heat_index_value) };
+    else if (heat_index_value >= 26 && heat_index_value < 31)
+        return { code: 1, value: 'caution', score: f(heat_index_value) };
+    else if (heat_index_value >= 31 && heat_index_value < 51)
+        return { code: 2, value: 'uncomfortable', score: f(heat_index_value) };
+    else
+        return { code: 3, value: 'danger', score: f(heat_index_value) };
 };
 
 const indoor_co2_status = (indoor_co2_value) => {
-    const f = value => Math.min(100, Math.max(0, (-value + 1500) / 10))
+    const f = value => Math.min(100, Math.max(0, (-value + 1500) / 10));
     if (indoor_co2_value < 600)
         return { code: 0, value: 'excellent', score: f(indoor_co2_value) };
     else if (indoor_co2_value >= 600 && indoor_co2_value < 1000)
