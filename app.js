@@ -3,7 +3,7 @@ const path         = require('path');
 const cookieParser = require('cookie-parser');
 const logger       = require('morgan');
 const cors         = require('cors');
-require('dotenv').config()
+require('dotenv').config();
 
 const app = express();
 
@@ -19,5 +19,10 @@ app.use('/scores', require('./api/scores'));
 
 app.listen(8080);
 console.log('APP LISTENING ON 8080');
+
+app.get('/', (req, res) => {
+    console.log('Index')
+    res.sendFile(__dirname + '/public/index.html');
+});
 
 module.exports = app;
