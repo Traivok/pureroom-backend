@@ -15,7 +15,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(cors({ origin: '*' }));
 
 app.use('/weather', require('./api/influxdb'));
-app.use('/scores', require('./api/scores'));
+//app.use('/scores', require('./api/scores'));
 
 const port = 8081;
 app.listen(8081);
