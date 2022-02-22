@@ -12,14 +12,14 @@ const { zip, sum, values }            = require('lodash');
 const queryApi = new InfluxDB({ url, token }).getQueryApi(org);
 
 const fluxQuery = (measurement) => `from(bucket: "ubiquarium")
-  |> range(start: -1d)
+  |> range(start: -5d)
   |> filter(fn: (r) => r["measurement"] == "${ measurement }")
   |> filter(fn: (r) => r["location"] == "t1_1_ubiquarium_stand1")
   |> filter(fn: (r) => r["protocol"] == "netatmo") 
   |> yield(name: "last")`;
 
 const fluxQuery_humidity_and_temperature_measurement = () => `from(bucket: "ubiquarium")
-  |> range(start: -1d)
+  |> range(start: -5d)
   |> filter(fn: (r) => r["measurement"] == "humidity" or r["measurement"] == "temperature")
   |> filter(fn: (r) => r["location"] == "t1_1_ubiquarium_stand1")
   |> filter(fn: (r) => r["protocol"] == "netatmo") 

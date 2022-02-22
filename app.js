@@ -17,8 +17,9 @@ app.use(cors({ origin: '*' }));
 app.use('/weather', require('./api/influxdb'));
 //app.use('/scores', require('./api/scores'));
 
-app.listen(8080);
-console.log('APP LISTENING ON 8080');
+const port = 8081;
+app.listen(8081);
+console.log('APP LISTENING ON', port);
 
 app.get('/', (req, res) => {
     console.log('Index')
